@@ -1,0 +1,394 @@
+
+<!DOCTYPE html>
+
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>1. Semaine 02 - Validation &#8212; Documentation Plutus Pioneer Program </title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/translations.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Recherche" href="../search.html" />
+    <link rel="prev" title="Plutus Pioneer Program Cohort 3 - Notes en Français" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="semaine-02-validation">
+<h1><span class="section-number">1. </span>Semaine 02 - Validation<a class="headerlink" href="#semaine-02-validation" title="Lien permanent vers ce titre">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Ceci est une version écrite de <a class="reference external" href="https://www.youtube.com/playlist?list=PLNEK_Ejlx3x0mhPmOjPSHZPtTFpfJo3Nd">Lecture
+#2, Iteration #3</a>.</p>
+<p>Nous aborderons les scripts de Validation non typés de bas et haut niveau
+ainsi que les scripts de validation typés On-Chain.</p>
+<p>Afin de simplifier la compréhension nous utiliserons parfois des termes anglais non traduit en Français.
+Comme par exemple <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> ou <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code> que nous abrégerons en <code class="docutils literal notranslate"><span class="pre">Context</span></code>.</p>
+<p>Le code utilisé dans cette lecture utilise le commit <code class="docutils literal notranslate"><span class="pre">6aff97d596ac9d59460aab5c65627b1c8c0a1528</span></code></p>
+</div>
+<section id="introduction">
+<h2><span class="section-number">1.1. </span>Introduction<a class="headerlink" href="#introduction" title="Lien permanent vers ce titre">¶</a></h2>
+<p>Pensez à mettre à jour la version de Plutus Playground.
+Et à récupérer le bon identifiant de commit.</p>
+</section>
+<section id="lecture-2">
+<h2><span class="section-number">1.2. </span>Lecture 2<a class="headerlink" href="#lecture-2" title="Lien permanent vers ce titre">¶</a></h2>
+<section id="objectifs">
+<h3><span class="section-number">1.2.1. </span>Objectifs<a class="headerlink" href="#objectifs" title="Lien permanent vers ce titre">¶</a></h3>
+<p>Les principaux objectifs de la semaine 2  sont :</p>
+<ol class="arabic simple">
+<li><p><strong>Comprendre</strong> de simples scripts  <code class="docutils literal notranslate"><span class="pre">validator</span></code> non typés (Bas niveau) dans un premier temps et typés (Haut niveau) dans un second..</p></li>
+</ol>
+<blockquote>
+<div><ul class="simple">
+<li><p>Nous utiliserons principalement dans ce cours les scripts <code class="docutils literal notranslate"><span class="pre">validator</span></code> typés.</p></li>
+<li><p>Certains projets qui ont essayé de construire quelque chose sur Cardano avec Plutus n’ont pas choisi d’utiliser les types <code class="docutils literal notranslate"><span class="pre">data</span></code> de Haskell pour structurer les données personnalisés et typer le <code class="docutils literal notranslate"><span class="pre">validator</span></code>, mais ont plutôt travaillé directement avec les <code class="docutils literal notranslate"><span class="pre">validators</span></code> non typés de bas niveau pour des raisons de performances.</p>
+<ul>
+<li><p>Le script compilé <code class="docutils literal notranslate"><span class="pre">Plutus</span> <span class="pre">Core</span></code> devient plus volumineux quand les types de données de haut niveau sont utilisés dans le code et le nombre d’étapes nécessaire pour exécuter le script <code class="docutils literal notranslate"><span class="pre">validator</span></code> et la consommation de la mémoire augmentent. Si les ressources matérielles sont limités, vous préférerez surement utiliser la version « Bas niveau ».</p></li>
+<li><p>Il est possible d’estimer le coût d’un script de smart contrat : <a class="reference external" href="https://iohk.io/en/blog/posts/2022/01/21/plutus-fee-estimator-find-out-the-cost-of-transacting-on-cardano//">voir cet article en anglais</a></p></li>
+</ul>
+</li>
+</ul>
+</div></blockquote>
+<ol class="arabic simple">
+<li><p><strong>Construire</strong> un Script <code class="docutils literal notranslate"><span class="pre">validator</span></code> qui <strong>réussit toujours</strong>, en ignorant complétement ses arguments : <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et le <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code>.</p></li>
+<li><p><strong>Construire</strong> un Script <code class="docutils literal notranslate"><span class="pre">validator</span></code> qui <strong>échoue toujours</strong> , en ignorant complétement ses arguments : <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et le <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code>.</p></li>
+<li><p><strong>Construire</strong> un Script <code class="docutils literal notranslate"><span class="pre">validator</span></code> qui consulte le <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> et <strong>vérifie</strong> s’il contient une certaine valeur prédéfinie (un entier, d’une valeur fixée à 42 dans notre cas).</p></li>
+<li><p><strong>Réécrire</strong> ce script dans une version typée, qui sera la seule utilisée en pratique.</p></li>
+</ol>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Dans un premier temps avec des types préconstruits au langage (<code class="docutils literal notranslate"><span class="pre">built-in</span> <span class="pre">data</span> <span class="pre">types</span></code>).</p></li>
+<li><p>Nous avons vu comment nous pouvons également utiliser des types de données personnalisés, mais nous n’avons pas examiné les exemples où le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> ou le <code class="docutils literal notranslate"><span class="pre">Context</span></code> est réellement inspecté, ce qui, bien sûr, dans des exemples réalistes sera le plus souvent le cas. Nous le ferons dans les prochains cours.</p></li>
+</ol>
+</div></blockquote>
+</section>
+<section id="concepts-cles">
+<h3><span class="section-number">1.2.2. </span>Concepts clés<a class="headerlink" href="#concepts-cles" title="Lien permanent vers ce titre">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">Modèle</span> <span class="pre">étendu</span> <span class="pre">UTxO</span></code> - <code class="docutils literal notranslate"><span class="pre">Plutus</span> <span class="pre">Validator</span></code> (Les smart contract de Cardano) - <code class="docutils literal notranslate"><span class="pre">Datum</span></code> - <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> - <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">context</span></code> - <code class="docutils literal notranslate"><span class="pre">les</span> <span class="pre">types</span> <span class="pre">de</span> <span class="pre">données</span> <span class="pre">de</span> <span class="pre">bas</span> <span class="pre">et</span> <span class="pre">haut</span> <span class="pre">niveau</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Références à lire, en anglais pour les sections 1.2.X :</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><a class="reference external" href="https://playground.plutus.iohkdev.io/doc/haddock">Documentation Plutus</a></p></li>
+<li><p><a class="reference external" href="https://www.canonicalllc.com/post/plutus-101-from-multisig-to-programmatic-validation">From Multisig to Programmatic Validation</a></p></li>
+<li><p><a class="reference external" href="https://www.canonicalllc.com/post/plutus-102-datum-and-redeemer">Datum and Redeemer</a></p></li>
+</ol>
+</div></blockquote>
+</div>
+<section id="extended-utxo-eutxo-datum-redeemer-et-script-context">
+<h4><span class="section-number">1.2.2.1. </span>Extended UtxO (eUTxO): datum, redeemer et script context<a class="headerlink" href="#extended-utxo-eutxo-datum-redeemer-et-script-context" title="Lien permanent vers ce titre">¶</a></h4>
+<p>Un nouveau type d’adresse a été introduit dans le modèle étendu <strong>eUtxO</strong>.</p>
+<p>Dans le modèle simple <strong>UtxO</strong>, nous utilisons des adresses de clef publique.
+Cette adresse est donnée par le hachage d’une clé publique et si un <strong>UtxO</strong> se trouve à cette adresse,
+alors une transaction peut utiliser cet <strong>UtxO</strong> comme entrée si la signature de la clé publique est incluse dans la transaction.</p>
+<p>Le modèle <strong>(e)UtxO</strong> étend cela en ajoutant un nouveau type d’adresse, appelée <strong>adresse de script</strong>,qui peut exécuter une logique arbitraire.</p>
+<p>Lorsqu’une transaction qui souhaite consommer un <strong>UTxO</strong> associé à une <strong>adresse de script</strong> est validée par un nœud alors ce nœud exécute le script,
+puis, en fonction du résultat du script, décide si la transaction est <strong>valide</strong> ou <strong>non</strong>.</p>
+<p>Il y a eu <strong>deux autres ajouts</strong> au modèle de base.</p>
+<p>Le premier étant que maintenant, au lieu d’avoir simplement des signatures et des transactions,
+nous avons des <code class="docutils literal notranslate"><span class="pre">Redeemers</span></code> qui sont des morceaux de données arbitraires.</p>
+<p>Du côté de l” <strong>UTxO</strong>, du côte de la sortie, nous avons une donnée arbitraire supplémentaire appelée <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, que nous pouvons considérer comme un petit morceau d’état.</p>
+<p>Enfin, nous avons le <code class="docutils literal notranslate"><span class="pre">contexte</span> <span class="pre">du</span> <span class="pre">script</span></code> et il existe différents choix de définition. Il pourrait être très restreint, composé uniquement du <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> ou il pourrait être très global composé de l’ensemble de l’état de la blockchain. À Cardano, c’est la transaction qui est validée, y compris toutes ses entrées et sorties.</p>
+<dl class="simple">
+<dt>Il y a donc trois éléments de données qu’un script <strong>Plutus</strong> obtient :</dt><dd><ol class="arabic simple">
+<li><p>Le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> siégeant dans l’UTxO,</p></li>
+<li><p>Le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> venant de de l’entrée,</p></li>
+<li><p>Le <code class="docutils literal notranslate"><span class="pre">script</span> <span class="pre">de</span> <span class="pre">validation</span></code> et le <code class="docutils literal notranslate"><span class="pre">contexte</span></code> constitué de la transaction en cours de validation et de ses entrées et sorties.</p></li>
+</ol>
+</dd>
+</dl>
+<p>Ainsi, dans une implémentation concrète comme Plutus, ces trois données doivent évidemment être représentées par un type de données concret, un type de données Haskell.</p>
+</section>
+<section id="smart-contracts-plutus-appeles-scripts-validateurs">
+<h4><span class="section-number">1.2.2.2. </span>Smart Contracts Plutus appelés Scripts Validateurs<a class="headerlink" href="#smart-contracts-plutus-appeles-scripts-validateurs" title="Lien permanent vers ce titre">¶</a></h4>
+<p>Les contrats intelligents sur <strong>Cardano</strong> fonctionnent différemment des contrats intelligents sur <strong>Ethereum</strong>.
+Les contrats intelligents Plutus ne sont pas des scripts déployés sur la blockchain Cardano, avec des méthodes que les utilisateurs peuvent exécuter.</p>
+<p>Les <strong>contrats intelligents Plutus</strong> sont des <strong>validateurs</strong>, par ex. des fonctions qui <strong>évaluent</strong> des données et <strong>retournent un booléen</strong>.
+Les contrats intelligents peuvent soit dire « oui » les transactions doivent réussir, soit « non » elles ne doivent pas.</p>
+<p>Lorsque les contrats intelligents Plutus sont compilés, <strong>une sortie binaire(logique) Plutus Core</strong> est produite.</p>
+<p>Cette sortie binaire peut être hachée pour produire une « <strong>adresse de script</strong> ».
+Les adresses de script sont de nouveaux types d’adresses de blockchain.
+Contrairement aux adresses de portefeuille typiques, elles n’ont pas de paire de clés associée.
+Il n’y a <strong>pas de clé de vérification ni de clé de signature</strong> par contre comme les adresses de portefeuille ordinaires, <strong>elles possèdent des UTxOs</strong>.</p>
+<ul>
+<li><p>Il est important de souligner que <strong>les contrats intelligents sont limités</strong>. Ils peuvent <strong>approuver</strong> ou <strong>refuser</strong> des transactions mais <strong>ils ne peuvent pas</strong> créer de nouvelles transactions. Ils peuvent simplement <strong>renvoyer</strong> <code class="docutils literal notranslate"><span class="pre">true</span></code> ou <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p></li>
+<li><p>La majeure partie du « travail » doit se produire « <strong>off-chain</strong> ».</p></li>
+<li><p>Les <strong>validateurs Plutus</strong> sont des fonctions qui ont trois entrées et renvoient un <code class="docutils literal notranslate"><span class="pre">booléen</span></code>. Les trois entrées sont le <code class="docutils literal notranslate"><span class="pre">DATUM</span></code>, le <code class="docutils literal notranslate"><span class="pre">REDEEMER</span></code> et le <code class="docutils literal notranslate"><span class="pre">CONTEXTE</span> <span class="pre">DU</span> <span class="pre">SCRIPT</span></code>.</p>
+<p>La signature de la fonction :</p>
+<div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">validator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">Datum</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Redeemer</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">ScriptCxt</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Bool</span><span class="w"></span>
+</pre></div>
+</div>
+</li>
+<li><p>Le contexte du script est le plus facile à comprendre. Les contrats intelligents sont <strong>exécutés</strong> implicitement lorsque
+les <strong>UTxO</strong> aux adresses de script sont utilisés comme <strong>entrées</strong> dans une <strong>transaction</strong>. Le contexte du script fournit des informations sur la transaction en attente, ainsi que sur l’entrée qui a déclenché la validation.</p></li>
+<li><p>Il existe deux types d’utilisateurs dans un enchainement Plutus. L’utilisateur qui crée la première transaction est appelé le <strong>locker</strong>.
+L’utilisateur qui crée la seconde transaction est appelé le <strong>unlocker</strong>. Le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> est l’entrée du <strong>Locker</strong>. Le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> est l’entrée du <strong>Unlocker</strong>.</p></li>
+<li><p>Grâce à ces noms différents, nous obtenons une idée un peu plus claire du fonctionnement des validateurs :</p>
+<div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">validator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">LockerInput</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">UnlockerInput</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">ScriptCxt</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Bool</span><span class="w"></span>
+</pre></div>
+</div>
+</li>
+<li><p>Comprendre que le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> soit l’entrée du <strong>Locker</strong> et que le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> soit l’entrée du <strong>Unlocker</strong> est très utile lors de la conception de validateurs.
+Cependant, ce n’est pas ainsi que les transactions Plutus sont réellement construites.
+En réalité, le <strong>Locker</strong> envoie un hachage du <code class="docutils literal notranslate"><span class="pre">Datum</span></code> lors du verrouillage des actifs à une adresse de script. Le <strong>Unlocker</strong> doit envoyer le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> complet, de sorte qu’elle corresponde au hachage que le <strong>Locker</strong> a utilisé lors du verrouillage des actifs.</p></li>
+<li><p>Ainsi, le <strong>Unlocker</strong> doit envoyer les deux entrées, l’entrée du <strong>Locker</strong> et la sienne.
+Étant donné que le <strong>Locker</strong> a défini le hachage lors du verrouillage, le <strong>Unlocker</strong> n’est pas en mesure d’envoyer des <code class="docutils literal notranslate"><span class="pre">Datums</span></code>.
+Ce doit être le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> choisie par le <strong>Locker</strong>. Cependant, il n’y a pas de mécanisme <strong>On-Chain</strong> pour propager le choix des <strong>Lockers</strong> au validateur.
+Le <strong>Unlocker</strong> doit découvrir par le biais d’un processus <strong>Off-Chain</strong> personnalisé quel <code class="docutils literal notranslate"><span class="pre">Datum</span></code> le <strong>Locker</strong> a utilisée, sinon le déverrouillage est impossible.</p></li>
+</ul>
+<p>Pour imaginer comment ces entrées sont utilisées, considérons une situation d’échange(swap).
+Le <strong>Locker</strong> verrouille les actifs à une adresse de script et fournit un <code class="docutils literal notranslate"><span class="pre">Datum</span></code> qui décrit comment ils aimeraient être payés.
+Ensuite, le <strong>Unlocker</strong> utilise l’UTxO comme entrée et transmet un <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> expliquant comment il souhaite payer.
+Le validateur examine les entrées des deux utilisateurs et le contexte du script pour s’assurer que les entrées et les sorties soient cohérentes avec ce qui est demandé par les utilisateurs.
+Si c’est le cas, il renvoie <code class="docutils literal notranslate"><span class="pre">true</span></code> et effectue l’échange. Sinon <code class="docutils literal notranslate"><span class="pre">false</span></code>, la transaction échoue.</p>
+</section>
+<section id="synthese">
+<h4><span class="section-number">1.2.2.3. </span>Synthèse<a class="headerlink" href="#synthese" title="Lien permanent vers ce titre">¶</a></h4>
+<ul class="simple">
+<li><p>Les contrats intelligents Plutus sont hachés pour créer une adresse de script.</p></li>
+<li><p>Les actifs sont envoyés à l’adresse du contrat intelligent et y sont verrouillés.</p></li>
+<li><p>Les actifs doivent passer le validateur Plutus pour quitter l’adresse du script et être déverrouillés.</p></li>
+<li><p>Il y a trois éléments d’entrée dans un validateur Plutus : <code class="docutils literal notranslate"><span class="pre">datum</span></code>, <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">contexte</span> <span class="pre">de</span> <span class="pre">script</span></code>.</p></li>
+<li><p>Le <code class="docutils literal notranslate"><span class="pre">datum</span></code> est l’entrée du <strong>Locker</strong>, le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> est l’entrée du <strong>Unlocker</strong>.</p></li>
+<li><p>Le <strong>Locker</strong> envoie un hachage du <code class="docutils literal notranslate"><span class="pre">Datum</span></code> lors du verrouillage.</p></li>
+<li><p>Le <strong>Unlocker</strong> doit être informé du <code class="docutils literal notranslate"><span class="pre">Datum</span></code> que le <strong>Locker</strong> a utilisée pour faire le hachage.</p></li>
+<li><p>Le <strong>Unlocker</strong> doit envoyer le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> correspondant au hash et à l’éventuel <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> lors du déverrouillage.</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="lecture-2-week-2">
+<h2><span class="section-number">1.3. </span>Lecture 2/week 2<a class="headerlink" href="#lecture-2-week-2" title="Lien permanent vers ce titre">¶</a></h2>
+<p>Comme expliqué précédement, l’exécution de l’instance locale de <strong>Plutus playground</strong> pour compiler le code, simuler et tester certaines conditions suit le même processus que les semaines précédentes.
+Ceci est également valable pour vérifier la bonne version <code class="docutils literal notranslate"><span class="pre">git</span></code> de <code class="docutils literal notranslate"><span class="pre">plutus-apps</span></code> et rien de tout cela ne sera répété ici.</p>
+<p>Les <strong>validateurs Plutus</strong> sont des fonctions qui ont trois entrées et renvoient un <code class="docutils literal notranslate"><span class="pre">booléen</span></code>. Les trois entrées sont le <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et le <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code>.</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">validator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">Datum</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Redeemer</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">ScriptContext</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Bool</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> provient de la sortie consommée.
+Le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> vient de l’input qui consomme. Et le <code class="docutils literal notranslate"><span class="pre">contexte</span></code> est la transaction consommatrice avec toutes ses entrées et sorties.
+Les trois types <code class="docutils literal notranslate"><span class="pre">datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">contexte</span></code> sont représentés par le type de données data intégré que nous venons d’examiner.
+Ce serait donc une fonction qui prend trois arguments, tous de type données intégrées(<code class="docutils literal notranslate"><span class="pre">builtin</span></code>).
+Et il se trouve que le premier est le <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, le second est le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et le troisième est le <code class="docutils literal notranslate"><span class="pre">contexte</span></code>.
+Alors maintenant, quel est le type de retour ? Et c’est un peu surprenant, c’est le type <code class="docutils literal notranslate"><span class="pre">Unit</span></code>..</p>
+<p>Dans les exemples typés et non typés, nous écrirons un script de validation simple avec les variantes suivantes :</p>
+<ul>
+<li><p><strong>untyped(non typé) : variante 1 (adresse « cadeau » : envoyez y des ADA et tout le monde pourra les prendre)</strong></p>
+<p>Un validateur qui réussit toujours, ignorant complètement ses arguments : <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code>.</p>
+<div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">mkValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="nb">()</span><span class="w"></span>
+<span class="nf">mkValidator</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="nb">()</span><span class="w"></span>
+</pre></div>
+</div>
+<p>En utilisant des “underscores” pour les entrées, nous indiquons que nous ne nous soucions pas de leurs valeurs.
+Les trois types : <code class="docutils literal notranslate"><span class="pre">datum</span></code>, <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">script</span> <span class="pre">context</span></code> sont représentés par le type de données <code class="docutils literal notranslate"><span class="pre">BuiltinData</span></code> et le type de retour est le type <code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">()</span></code> quelque peu surprenant.
+Si vous prenez le hash de ce script, vous obtenez son adresse.</p>
+<p><strong>Qu’est-ce que cela signifierait d’avoir un UtxO à cette adresse de script ?</strong></p>
+<p>Cela signifierait que des transactions <strong>arbitraires</strong> pourraient utiliser cette UtxO comme entrée.
+<strong>Arbitraire</strong>, car peu importe le <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> utilisé,peu importe le <code class="docutils literal notranslate"><span class="pre">datum</span></code> utilisée à la sortie. Peu importe la structure de la transaction qui consomme cette UTxO.
+C’est pourquoi cela s’appelle le module « cadeau ». Parce que si quelqu’un envoie des fonds à cette adresse de script, n’importe qui d’autre peut immédiatement consommer cette sortie et l’utiliser à ses propres fins.
+Donc si vous envoyez des ADA à cette adresse, c’est un cadeau.</p>
+</li>
+<li><p><strong>untyped: variante 2 (Compte « trou noir », les valeurs sont bloquées pour toujours à cette adresse)</strong></p>
+<p>Un validateur qui échoue toujours, ignorant complètement ses arguments : <code class="docutils literal notranslate"><span class="pre">Datum</span></code>, <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">Script</span> <span class="pre">Context</span></code>.</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">mkValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="nb">()</span><span class="w"></span>
+<span class="nf">mkValidator</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">traceError</span><span class="w"> </span><span class="s">&quot;ALWAYS FAILS NO MATTER WHAT!&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Les trois types : <code class="docutils literal notranslate"><span class="pre">datum</span></code>, <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> et <code class="docutils literal notranslate"><span class="pre">script</span> <span class="pre">context</span></code> sont représentés par le type de données <code class="docutils literal notranslate"><span class="pre">BuiltinData</span></code> et le type de retour est le type <code class="docutils literal notranslate"><span class="pre">Unit()</span></code> quelque peu surprenant.</p>
+<p>Si vous prenez le hash de ce script, vous obtenez l’adresse du script.</p>
+<p><strong>Qu’est-ce que cela signifierait d’avoir un UtxO à cette adresse de script ?</strong></p>
+<p>Cela signifierait que des transactions <strong>arbitraires</strong> pourraient utiliser cette UtxO comme entrée.
+<strong>Arbitraire</strong>, car peu importe le <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> utilisé. Peu importe le <code class="docutils literal notranslate"><span class="pre">datum</span></code> utilisée à la sortie.
+Peu importe la structure de la transaction qui consomme cette entrée.
+C’est pourquoi cela s’appelle le module « Burn » . Parce que si quelqu’un envoie des fonds à cette adresse de script, ils seront brûlés pour toujours. Donc, si vous envoyez des ADA à cette adresse, personne ne pourra les récupérer.</p>
+</li>
+<li><p><strong>untyped: variante 3 (Simple validateur, if redeemer == 42 pass else fail)</strong></p>
+<p>Un validateur qui examine le <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> et vérifie s’il a une certaine valeur prédéfinie (un entier, défini à 42, dans notre cas)</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">mkValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">BuiltinData</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="nb">()</span><span class="w"></span>
+<span class="nf">mkValidator</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="kr">_</span><span class="w"></span>
+<span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kt">Builtins</span><span class="o">.</span><span class="n">mkI</span><span class="w"> </span><span class="mi">42</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="nb">()</span><span class="w"></span>
+<span class="w">             </span><span class="o">|</span><span class="w"> </span><span class="n">otherwise</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">traceError</span><span class="w"> </span><span class="s">&quot;wrong redeemer!&quot;</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Identique à la variante 1, sauf que vous devez maintenant fournir le bon <code class="docutils literal notranslate"><span class="pre">redeemer</span></code>, d’où le nom de script 42. En plus de cela, nous recevrons également le message d’erreur.</p>
+</li>
+<li><p><strong>typed: variante 1  (Simple validateur, if redeemer == 42 pass else fail)</strong></p>
+<p>Identique à la <strong>variante 3 non typée</strong> mais cette fois le validateur est transformé en une version typée (<code class="docutils literal notranslate"><span class="pre">datum</span></code> est de type <code class="docutils literal notranslate"><span class="pre">unit</span></code>, un <code class="docutils literal notranslate"><span class="pre">redeemer</span></code> est un entier et le contexte de script est de type <code class="docutils literal notranslate"><span class="pre">ScriptContext</span></code> au lieu que les 3 soient de type de données <code class="docutils literal notranslate"><span class="pre">BuiltinData</span></code>)</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">mkValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="nb">()</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Integer</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">ScriptContext</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Bool</span><span class="w"></span>
+<span class="nf">mkValidator</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">traceIfFalse</span><span class="w"> </span><span class="s">&quot;wrong redeemer&quot;</span><span class="w"> </span><span class="o">$</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">42</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Un script regarde en fait le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> et vérifie s’il a une certaine valeur prédéfinie (un entier, défini sur 42, dans notre cas) sinon il renvoie <code class="docutils literal notranslate"><span class="pre">NGMI</span></code> (<code class="docutils literal notranslate"><span class="pre">False</span></code>).
+En plus de cela, nous recevrons également le message d’erreur.
+Il est plus agréable d’utiliser cette version de type, mais cela a également un impact sur les performances et sur les ressources. Les scripts de base de Plutus compilés deviennent plus gros et le nombre d’étapes d’exécution nécessaires pour exécuter le validateur et la consommation de mémoire augmentent.</p>
+</li>
+<li><p><strong>typed: variant 2  (Simple validateur, if redeemer == 42 pass else fail)</strong></p>
+<p>Identique à la variante typée 1 mais cette fois, vous créez un type de données personnalisé,
+pour le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code> par exemple (notre type de données personnalisé était simplement un entier, mais il peut évidemment s’agir de tout ce que vous voulez qui répond à vos besoins)</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">mkValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="nb">()</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">MySillyRedeemer</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">ScriptContext</span><span class="w"> </span><span class="ow">-&gt;</span><span class="w"> </span><span class="kt">Bool</span><span class="w"></span>
+<span class="nf">mkValidator</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="p">(</span><span class="kt">MySillyRedeemer</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="kr">_</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">traceIfFalse</span><span class="w"> </span><span class="s">&quot;wrong redeemer&quot;</span><span class="w"> </span><span class="o">$</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">42</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Vous trouverez ci-dessous un exemple de variante typée 2 dans le simulateur <strong>Plutus Playground</strong> avec le bon <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code>.
+Le portefeuille 1 envoie 3 ADA à l’adresse du script et le portefeuille 2 est capable de les récupérer car il fournit le bon <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code>.
+Si les valeurs entières n’étaient pas 42, l’action de capture échouerait car la sortie du validateur serait <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+<img alt="../_images/week2-1.png" src="../_images/week2-1.png" />
+</li>
+</ul>
+<section id="revue-de-code">
+<h3><span class="section-number">1.3.1. </span>Revue de code<a class="headerlink" href="#revue-de-code" title="Lien permanent vers ce titre">¶</a></h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Lecture des vidéos :</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://youtu.be/xgnmMl-eIIM">PPP 030202 Low Level, Untyped Validation Scripts</a></p></li>
+<li><p><a class="reference external" href="https://youtu.be/HoB_PqeZPNc">PPP 030203 - High Level, Typed Validation Scripts</a></p></li>
+</ul>
+</div>
+<p>Pour obtenir le validateur, nous devons compiler la fonction <code class="docutils literal notranslate"><span class="pre">mkValidator</span></code> avec <code class="docutils literal notranslate"><span class="pre">Plutus</span> <span class="pre">Core</span></code>.</p>
+<ul>
+<li><p><strong>Version non typée</strong></p>
+<div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">validator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">Validator</span><span class="w"></span>
+<span class="nf">validator</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="n">mkValidatorScript</span><span class="w"> </span><span class="o">$$</span><span class="p">(</span><span class="kt">PlutusTx</span><span class="o">.</span><span class="n">compile</span><span class="w"> </span><span class="p">[</span><span class="o">||</span><span class="w"> </span><span class="n">mkValidator</span><span class="w"> </span><span class="o">||</span><span class="p">])</span><span class="w"></span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Version typée</strong></p></li>
+</ul>
+<p>Pour la version typée, il faut utiliser en plus une fonction <code class="docutils literal notranslate"><span class="pre">wrap</span></code> mais la logique est à peu près la même.</p>
+<blockquote>
+<div><div class="highlight-haskell notranslate"><div class="highlight"><pre><span></span><span class="nf">typedValidator</span><span class="w"> </span><span class="ow">::</span><span class="w"> </span><span class="kt">Scripts</span><span class="o">.</span><span class="kt">TypedValidator</span><span class="w"> </span><span class="kt">Typed</span><span class="w"></span>
+<span class="nf">typedValidator</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kt">Scripts</span><span class="o">.</span><span class="n">mkTypedValidator</span><span class="w"> </span><span class="o">@</span><span class="kt">Typed</span><span class="w"></span>
+<span class="o">$$</span><span class="p">(</span><span class="kt">PlutusTx</span><span class="o">.</span><span class="n">compile</span><span class="w"> </span><span class="p">[</span><span class="o">||</span><span class="w"> </span><span class="n">mkValidator</span><span class="w"> </span><span class="o">||</span><span class="p">])</span><span class="w"></span>
+<span class="o">$$</span><span class="p">(</span><span class="kt">PlutusTx</span><span class="o">.</span><span class="n">compile</span><span class="w"> </span><span class="p">[</span><span class="o">||</span><span class="w"> </span><span class="n">wrap</span><span class="w"> </span><span class="o">||</span><span class="p">])</span><span class="w"></span>
+<span class="kr">where</span><span class="w"></span>
+<span class="nf">wrap</span><span class="w"> </span><span class="ow">=</span><span class="w"> </span><span class="kt">Scripts</span><span class="o">.</span><span class="n">wrapValidator</span><span class="w"> </span><span class="o">@</span><span class="nb">()</span><span class="w"> </span><span class="o">@</span><span class="kt">MySillyRedeemer</span><span class="w"></span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>Nous avons besoin d’une sorte de traduction entre les types forts et la version de bas niveau.
+Et cela se fait en utilisant un <code class="docutils literal notranslate"><span class="pre">wrapper</span></code> que nous n’avons pas besoin d’écrire à la main car fourni dans le module du script.
+Ainsi, nous pouvons toujours utiliser <code class="docutils literal notranslate"><span class="pre">wrap</span></code> comme <code class="docutils literal notranslate"><span class="pre">wrapValidator</span></code>, et nous devons lui indiquer les types à utiliser pour le <code class="docutils literal notranslate"><span class="pre">Datum</span></code> et le <code class="docutils literal notranslate"><span class="pre">Redeemer</span></code>.
+C’est plus compliqué que la version non typée car il y a plus de chose à écrire, mais ce sera toujours la même syntaxe.
+Ainsi, chaque fois que nous souhaitons utiliser cette version typée, il nous suffit plus ou moins de la copier-coller, puis de l’adapter aux types et aux noms que nous utilisons.</p>
+<p>Il faut utiliser une fonctionnalité <strong>Haskell</strong> avancée appelée <code class="docutils literal notranslate"><span class="pre">Template</span></code> <strong>Haskell</strong>.
+La bonne nouvelle est que le <code class="docutils literal notranslate"><span class="pre">template</span></code>, la façon dont il est utilisé pour travailler avec <strong>Plutus</strong> est toujours le même.
+Nous n’avons donc pas vraiment besoin de comprendre les subtilités du modèle Haskell pour l’utiliser.
+C’est plus ou moins toujours un copier-coller du même motif.</p>
+<p>Les <code class="docutils literal notranslate"><span class="pre">Templates</span></code> Haskell permettent de faire ce que les autres langages de programmation font avec les systèmes de macros.
+C’est quoi une macro ? La macro est quelque chose qui est utilisé avant que le compilateur ne s’exécute.
+Donc, c’est au moment de la compilation, les macros sont en quelque sorte évaluées et dépensées dans le code.
+Celui-ci est ensuite inséré à côté du code que l’utilisateur a saisi manuellement.
+Et puis le compilateur est exécuté sur tout cela, le code utilisateur et les macros utilisées.
+C’est donc un moyen de générer du code au moment de la compilation.
+Les macros sont donc des programmes qui écrivent des programmes.
+Et dans Haskell, cela se fait avec les <code class="docutils literal notranslate"><span class="pre">templates</span></code> Haskell.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Plutus Pioneer Program</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Plutus Pioneer Program</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">1. Semaine 02 - Validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">1.1. Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lecture-2">1.2. Lecture 2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lecture-2-week-2">1.3. Lecture 2/week 2</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../index.html" title="Chapitre précédent">Plutus Pioneer Program Cohort 3 - Notes en Français</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Recherche rapide</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Bauer Baptiste.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/pioneer/week1.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
